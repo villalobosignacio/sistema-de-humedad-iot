@@ -1,19 +1,49 @@
-#define SENSOR_PIN 34
+#include <WiFi.h>
+#include <ThingSpeak.h>
 
+#define SENSOR_PIN 34
 #define LED_ROJO 25
 #define LED_VERDE 26
 #define LED_AZUL 27
 
+const char* ssid = "nombre de usuario";
+const char* password = "contraseña";
+
+unsigned long channelNumber = 3417033;
+const char* writeAPIKey = "2NP50GZ7XYZEAFSQ";
+
+WiFiClient client;
 int valorHumedad = 0;
 
 void setup() {
   Serial.begin(115200);
+  delay(1000);
 
   pinMode(LED_ROJO, OUTPUT);
   pinMode(LED_VERDE, OUTPUT);
   pinMode(LED_AZUL, OUTPUT);
-
   apagarLED();
+
+  Serial.println("Iniciando sistema...");
+
+  WiFi.begin(ssid, password);
+  Serial.println("Intentando conectar WiFi...");
+
+  int intentos = 0;
+  while (WiFi.status() != WL_CONNECTED && intentos < 20) {
+    delay(500);
+    Serial.print(".");
+    intentos++;
+  }
+
+  Serial.println();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("WiFi conectado");
+    ThingSpeak.begin(client);
+  } else {
+    Serial.println("No conectó WiFi, pero sensor y LEDs siguen funcionando");
+  }
 }
 
 void loop() {
@@ -22,25 +52,34 @@ void loop() {
   Serial.print("Valor del sensor: ");
   Serial.println(valorHumedad);
 
-  if (valorHumedad >= 3000 && valorHumedad <= 4095) {
-    // TIERRA SECA → ROJO
+  if (valorHumedad >= 3000) {
     rojo();
     Serial.println("Estado: TIERRA SECA - NECESITA RIEGO");
   } 
-  else if (valorHumedad >= 2000 && valorHumedad < 3000) {
-    // HUMEDAD MEDIA → AMARILLO
+  else if (valorHumedad >= 2000) {
     amarillo();
     Serial.println("Estado: HUMEDAD MEDIA");
   } 
-  else if (valorHumedad < 2000) {
-    // TIERRA HÚMEDA O MUY MOJADA → VERDE
+  else {
     verde();
     Serial.println("Estado: TIERRA HÚMEDA / MUY MOJADA");
   }
 
-  Serial.println("-------------------------");
+  if (WiFi.status() == WL_CONNECTED) {
+    ThingSpeak.setField(1, valorHumedad);
+    int x = ThingSpeak.writeFields(channelNumber, writeAPIKey);
 
-  delay(10000); // vuelve a evaluar cada 15 segundos
+    if (x == 200) Serial.println("Dato enviado a ThingSpeak");
+    else {
+      Serial.print("Error ThingSpeak: ");
+      Serial.println(x);
+    }
+  } else {
+    Serial.println("Sin WiFi: no se envió a dashboard");
+  }
+
+  Serial.println("-------------------------");
+  delay(20000);
 }
 
 void rojo() {
