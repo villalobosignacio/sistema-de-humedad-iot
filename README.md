@@ -63,6 +63,12 @@ Lógica de indicación LED
 | Amarillo (R+G) | 2000 – 2999 | Humedad media |
 | Verde | 0 – 1999 | Tierra húmeda / bien irrigada |
 
+Dashboard y Visualización
+
+Los datos capturados por el dispositivo se guardan y procesan en ThingSpeak. Puedes ver las gráficas e indicadores en tiempo real a través del siguiente enlace:
+
+[https://thingspeak.mathworks.com/channels/3417033/private_show]
+
 Estructura del repositorio
 
 ```
