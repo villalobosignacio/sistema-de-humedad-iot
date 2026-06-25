@@ -61,6 +61,11 @@ Resultado obtenido:
 | Intento | Valor ADC | LED activado | Estado Serial | ¿Correcto? |
 | 1 | [1279] | [verde] | [TIERRA HÚMEDA / MUY MOJADA] | [Sí] |
 
+
+<img width="373" height="266" alt="image (1)" src="https://github.com/user-attachments/assets/4a17b8e2-bb13-4ad6-b4fe-d95a2ec88737" />
+
+
+
 Prueba 4  Frecuencia de muestreo
 
 Objetivo: Verificar que el sistema realiza lecturas cada 10 segundos de forma continua y estable.
