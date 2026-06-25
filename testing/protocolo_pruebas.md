@@ -27,9 +27,7 @@ Criterio de éxito: Valor ADC ≥ 3000 | LED rojo encendido | Serial muestra "TI
 Resultado obtenido:
 | Intento | Valor ADC | LED activado | Estado Serial | ¿Correcto? |
 
-| 1 | [anotar] | [color] | [texto] | [Sí/No] |
-| 2 | [anotar] | [color] | [texto] | [Sí/No] |
-| 3 | [anotar] | [color] | [texto] | [Sí/No] |
+| 1 | [4095] | [rojo] | [TIERRA SECA - NECESITA RIEGO] | [Sí] |
 
 
 Prueba 2  Detección de humedad media
@@ -46,9 +44,7 @@ Criterio de éxito: Valor ADC entre 2000 y 2999 | LED amarillo encendido | Seria
 
 Resultado obtenido:
 | Intento | Valor ADC | LED activado | Estado Serial | ¿Correcto? |
-| 1 | [anotar] | [color] | [texto] | [Sí/No] |
-| 2 | [anotar] | [color] | [texto] | [Sí/No] |
-| 3 | [anotar] | [color] | [texto] | [Sí/No] |
+| 1 | [2077] | [amarillo] | [HUMEDAD MEDIA] | [Sí] |
 
 #Prueba 3  Detección de tierra húmeda
 
@@ -63,9 +59,7 @@ Criterio de éxito: Valor ADC < 2000 | LED verde encendido | Serial muestra "TIE
 
 Resultado obtenido:
 | Intento | Valor ADC | LED activado | Estado Serial | ¿Correcto? |
-| 1 | [anotar] | [color] | [texto] | [Sí/No] |
-| 2 | [anotar] | [color] | [texto] | [Sí/No] |
-| 3 | [anotar] | [color] | [texto] | [Sí/No] |
+| 1 | [1279] | [verde] | [TIERRA HÚMEDA / MUY MOJADA] | [Sí] |
 
 Prueba 4  Frecuencia de muestreo
 
