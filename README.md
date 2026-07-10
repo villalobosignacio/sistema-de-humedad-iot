@@ -64,10 +64,9 @@ Lógica de indicación LED
 | Verde | 0 – 1999 | Tierra húmeda / bien irrigada |
 
 Dashboard y Visualización
+Los datos capturados por el ESP32 se envían mediante peticiones HTTPS (POST) a nuestra propia API alojada en Railway. 
 
-Los datos capturados por el dispositivo se guardan y procesan en ThingSpeak. Puedes ver las gráficas e indicadores en tiempo real a través del siguiente enlace:
-
-[https://thingspeak.mathworks.com/channels/3417033/private_show]
+[Acceder a la API/Dashboard en Railway](https://sistema-de-humedad-iot-production.up.railway.app/api/medicion)
 
 Estructura del repositorio
 
