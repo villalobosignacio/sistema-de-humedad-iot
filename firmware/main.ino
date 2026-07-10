@@ -14,7 +14,7 @@ const char* password = "TU_CLAVE_WIFI";
 // =====================================================
 
 const char* serverUrl =
-  "https://sistema-de-humedad-iot-production.up.railway.app/api/medicion";
+  "sistema-de-humedad-iot-production.up.railway.app;
 
 // =====================================================
 // CONFIGURACIÓN DEL SENSOR
