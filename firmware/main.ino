@@ -1,109 +1,269 @@
 #include <WiFi.h>
-#include <ThingSpeak.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 
-#define SENSOR_PIN 34
-#define LED_ROJO 25
-#define LED_VERDE 26
-#define LED_AZUL 27
+// =====================================================
+// CONFIGURACIÓN WIFI
+// =====================================================
 
-const char* ssid = "nombre de usuario";
-const char* password = "contraseña";
+const char* ssid = "TU_NOMBRE_WIFI";
+const char* password = "TU_CLAVE_WIFI";
 
-unsigned long channelNumber = 3417033;
-const char* writeAPIKey = "2NP50GZ7XYZEAFSQ";
+// =====================================================
+// URL DEL DASHBOARD EN RAILWAY
+// =====================================================
 
-WiFiClient client;
-int valorHumedad = 0;
+const char* serverUrl =
+  "https://sistema-de-humedad-iot-production.up.railway.app/api/medicion";
+
+// =====================================================
+// CONFIGURACIÓN DEL SENSOR
+// =====================================================
+
+// Pin analógico conectado desde AO del LM393
+const int SENSOR_PIN = 34;
+
+// Valores iniciales de calibración.
+// Más adelante puedes cambiarlos con tus lecturas reales.
+//
+// Tierra seca / aire = 0%
+// Tierra muy mojada = 100%
+const int valorSeco = 4095;
+const int valorMojado = 1200;
+
+// Enviar una medición cada 10 segundos
+const unsigned long INTERVALO_ENVIO = 10000;
+
+unsigned long ultimoEnvio = 0;
+
+// =====================================================
+// OBTENER ESTADO SEGÚN PORCENTAJE
+// =====================================================
+
+String obtenerEstado(int humedad) {
+  if (humedad >= 80) {
+    return "Muy mojado";
+  }
+
+  if (humedad >= 60) {
+    return "No necesita riego";
+  }
+
+  if (humedad >= 40) {
+    return "Humedad media";
+  }
+
+  if (humedad >= 20) {
+    return "Necesita riego";
+  }
+
+  return "Muy seco";
+}
+
+// =====================================================
+// DETERMINAR SI NECESITA RIEGO
+// =====================================================
+
+bool obtenerRiegoRecomendado(int humedad) {
+  return humedad < 40;
+}
+
+// =====================================================
+// CONECTAR A WIFI
+// =====================================================
+
+void conectarWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  Serial.print("Conectando al WiFi");
+
+  unsigned long tiempoInicio = millis();
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+
+    if (millis() - tiempoInicio >= 20000) {
+      Serial.println();
+      Serial.println("No se pudo conectar. Reintentando...");
+
+      WiFi.disconnect();
+      delay(1000);
+      WiFi.begin(ssid, password);
+
+      tiempoInicio = millis();
+    }
+  }
+
+  Serial.println();
+  Serial.println("WiFi conectado correctamente");
+
+  Serial.print("Direccion IP del ESP32: ");
+  Serial.println(WiFi.localIP());
+}
+
+// =====================================================
+// LEER SENSOR Y CALCULAR PORCENTAJE
+// =====================================================
+
+int obtenerPorcentajeHumedad(int lecturaCruda) {
+  int porcentaje = map(
+    lecturaCruda,
+    valorSeco,
+    valorMojado,
+    0,
+    100
+  );
+
+  porcentaje = constrain(porcentaje, 0, 100);
+
+  return porcentaje;
+}
+
+// =====================================================
+// ENVIAR MEDICIÓN AL DASHBOARD
+// =====================================================
+
+void enviarMedicion(
+  int lecturaCruda,
+  int humedadPorcentaje,
+  String estado,
+  bool riegoRecomendado
+) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi desconectado.");
+    Serial.println("Intentando reconectar...");
+
+    conectarWiFi();
+  }
+
+  WiFiClientSecure clienteSeguro;
+
+  // Permite conexión HTTPS con Railway
+  clienteSeguro.setInsecure();
+
+  HTTPClient http;
+
+  bool conexionIniciada = http.begin(clienteSeguro, serverUrl);
+
+  if (!conexionIniciada) {
+    Serial.println("No se pudo iniciar la conexion con el servidor.");
+    return;
+  }
+
+  http.addHeader("Content-Type", "application/json");
+
+  String json = "{";
+  json += "\"lectura\":" + String(lecturaCruda) + ",";
+  json += "\"humedad\":" + String(humedadPorcentaje) + ",";
+  json += "\"estado\":\"" + estado + "\",";
+  json += "\"riegoRecomendado\":";
+  json += riegoRecomendado ? "true" : "false";
+  json += ",";
+  json += "\"caso\":\"Medicion real ESP32\",";
+  json += "\"ubicacion\":\"Caja prototipo\",";
+  json += "\"dispositivo\":\"ESP32 sensor humedad\"";
+  json += "}";
+
+  Serial.println();
+  Serial.println("JSON enviado:");
+  Serial.println(json);
+
+  int codigoHTTP = http.POST(json);
+
+  Serial.print("Codigo HTTP: ");
+  Serial.println(codigoHTTP);
+
+  if (codigoHTTP > 0) {
+    String respuesta = http.getString();
+
+    Serial.print("Respuesta del servidor: ");
+    Serial.println(respuesta);
+
+    if (codigoHTTP == 200 || codigoHTTP == 201) {
+      Serial.println("Medicion enviada correctamente al dashboard.");
+    } else if (codigoHTTP == 404) {
+      Serial.println("Error 404: no existe /api/medicion en el servidor.");
+    } else if (codigoHTTP == 500) {
+      Serial.println("Error 500: problema interno del servidor.");
+    } else {
+      Serial.println("El servidor respondio, pero hubo un problema.");
+    }
+  } else {
+    Serial.print("Error de conexion HTTP: ");
+    Serial.println(http.errorToString(codigoHTTP));
+  }
+
+  http.end();
+}
+
+// =====================================================
+// SETUP
+// =====================================================
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  pinMode(LED_ROJO, OUTPUT);
-  pinMode(LED_VERDE, OUTPUT);
-  pinMode(LED_AZUL, OUTPUT);
-  apagarLED();
-
-  Serial.println("Iniciando sistema...");
-
-  WiFi.begin(ssid, password);
-  Serial.println("Intentando conectar WiFi...");
-
-  int intentos = 0;
-  while (WiFi.status() != WL_CONNECTED && intentos < 20) {
-    delay(500);
-    Serial.print(".");
-    intentos++;
-  }
+  pinMode(SENSOR_PIN, INPUT);
 
   Serial.println();
+  Serial.println("==================================");
+  Serial.println("SISTEMA SENSOR DE HUMEDAD");
+  Serial.println("==================================");
 
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("WiFi conectado");
-    ThingSpeak.begin(client);
-  } else {
-    Serial.println("No conectó WiFi, pero sensor y LEDs siguen funcionando");
-  }
+  conectarWiFi();
+
+  // Hace la primera medición inmediatamente
+  ultimoEnvio = millis() - INTERVALO_ENVIO;
 }
+
+// =====================================================
+// LOOP
+// =====================================================
 
 void loop() {
-  valorHumedad = analogRead(SENSOR_PIN);
+  if (millis() - ultimoEnvio >= INTERVALO_ENVIO) {
+    ultimoEnvio = millis();
 
-  Serial.print("Valor del sensor: ");
-  Serial.println(valorHumedad);
+    int lecturaCruda = analogRead(SENSOR_PIN);
 
-  if (valorHumedad >= 3000) {
-    rojo();
-    Serial.println("Estado: TIERRA SECA - NECESITA RIEGO");
-  } 
-  else if (valorHumedad >= 2000) {
-    amarillo();
-    Serial.println("Estado: HUMEDAD MEDIA");
-  } 
-  else {
-    verde();
-    Serial.println("Estado: TIERRA HÚMEDA / MUY MOJADA");
+    int humedadPorcentaje =
+      obtenerPorcentajeHumedad(lecturaCruda);
+
+    String estado =
+      obtenerEstado(humedadPorcentaje);
+
+    bool riegoRecomendado =
+      obtenerRiegoRecomendado(humedadPorcentaje);
+
+    Serial.println();
+    Serial.println("----------------------------------");
+
+    Serial.print("Lectura cruda: ");
+    Serial.println(lecturaCruda);
+
+    Serial.print("Humedad: ");
+    Serial.print(humedadPorcentaje);
+    Serial.println("%");
+
+    Serial.print("Estado: ");
+    Serial.println(estado);
+
+    Serial.print("Riego recomendado: ");
+    Serial.println(riegoRecomendado ? "SI" : "NO");
+
+    enviarMedicion(
+      lecturaCruda,
+      humedadPorcentaje,
+      estado,
+      riegoRecomendado
+    );
+
+    Serial.println("----------------------------------");
+    Serial.println("Proxima medicion en 10 segundos.");
   }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    ThingSpeak.setField(1, valorHumedad);
-    int x = ThingSpeak.writeFields(channelNumber, writeAPIKey);
-
-    if (x == 200) Serial.println("Dato enviado a ThingSpeak");
-    else {
-      Serial.print("Error ThingSpeak: ");
-      Serial.println(x);
-    }
-  } else {
-    Serial.println("Sin WiFi: no se envió a dashboard");
-  }
-
-  Serial.println("-------------------------");
-  delay(20000);
-}
-
-void rojo() {
-  digitalWrite(LED_ROJO, HIGH);
-  digitalWrite(LED_VERDE, LOW);
-  digitalWrite(LED_AZUL, LOW);
-}
-
-void amarillo() {
-  digitalWrite(LED_ROJO, HIGH);
-  digitalWrite(LED_VERDE, HIGH);
-  digitalWrite(LED_AZUL, LOW);
-}
-
-void verde() {
-  digitalWrite(LED_ROJO, LOW);
-  digitalWrite(LED_VERDE, HIGH);
-  digitalWrite(LED_AZUL, LOW);
-}
-
-void apagarLED() {
-  digitalWrite(LED_ROJO, LOW);
-  digitalWrite(LED_VERDE, LOW);
-  digitalWrite(LED_AZUL, LOW);
 }
 
 //El codigo comienza con las directivas de preprocesamiento que son:
