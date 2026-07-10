@@ -119,7 +119,11 @@ app.get('/api/historial', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+const path = require('path');
 
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
