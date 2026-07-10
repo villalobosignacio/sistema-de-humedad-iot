@@ -21,15 +21,15 @@ Componentes de hardware necesarios
 
 | Componente | Cantidad | Especificación |
 
-| ESP32 NodeMCU | 1 | ESP-32 38 pines, ADC 12-bit |
-| Sensor humedad suelo | 1 | Sensor resistivo, salida analógica |
-| LED Rojo 5mm | 1 | 2.0V, 20mA — pin GPIO 25 |
-| LED Verde 5mm | 1 | 2.1V, 20mA — pin GPIO 26 |
-| LED Azul 5mm | 1 | 3.2V, 20mA — pin GPIO 27 |
-| Resistencias 220Ω | 3 | Para protección de LEDs |
-| Protoboard 400 pts | 1 | — |
-| Cables jumper | 10 | Macho-macho 20cm |
-| Cable USB micro | 1 | Para alimentar y programar el ESP32 |
+Componentes de hardware necesarios
+
+| Componente | Cantidad | Especificación |
+| ESP32 NodeMCU | 1 | microcontrolador con Wi-Fi integrado, ADC 12-bit |
+| Sensor humedad suelo | 1 | Módulo LM393 (Sonda resistiva) — Conectado a pin GPIO 34 |
+| Protoboard 400 pts | 1 | Para el montaje y orden de conexiones internas |
+| Cables jumper | 10 | Conexiones internas de señal y alimentación |
+| Cable USB micro | 1 | Para suministro eléctrico continuo y programación |
+| Filamento PLA | ~50g | Material para la manufactura de la carcasa protectora 3D |
 
 Ver BOM completo con costos en `/hardware/BOM.md`
 
