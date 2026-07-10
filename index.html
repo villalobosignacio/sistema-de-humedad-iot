@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Agro Dashboard - Humedad de Suelo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f7f6;
+            --surface: #ffffff;
+            --primary: #2e7d32;
+            --text: #2d3436;
+            --border: #dfe6e9;
+        }
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .badges span {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 10px;
+            font-weight: 600;
+        }
+        .badge-mysql { background: #e3f2fd; color: #1565c0; }
+        .badge-mongo { background: #e8f5e9; color: #2e7d32; }
+        
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: var(--surface);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        .tab-btn.active { background: var(--primary); color: white; }
+        
+        .tab-content { display: none; background: var(--surface); padding: 20px; border-radius: 12px; }
+        .tab-content.active { display: block; }
+        
+        .query-card {
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .query-card:hover { border-color: var(--primary); }
+        
+        textarea {
+            width: 100%;
+            height: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        button.execute {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🌱 IoT Sensor Dashboard</h1>
+        <div class="badges">
+            <span class="badge-mysql" id="mysql-status">MySQL: Cargando...</span>
+            <span class="badge-mongo" id="mongo-status">MongoDB: Cargando...</span>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-predefinidas')">📊 Consultas</button>
+        <button class="tab-btn" onclick="switchTab('tab-sql')">💻 SQL Libre</button>
+        <button class="tab-btn" onclick="switchTab('tab-historial')">🕒 Historial (NoSQL)</button>
+    </div>
+
+    <div id="tab-predefinidas" class="tab-content active">
+        <h2>Consultas Rápidas</h2>
+        <div id="queries-container"></div>
+        <div id="results-predefinidas"></div>
+    </div>
+
+    <div id="tab-sql" class="tab-content">
+        <h2>Consola SQL</h2>
+        <p style="color: #636e72; font-size: 14px; margin-top: -10px; margin-bottom: 15px;">
+            Espacio para análisis avanzado. Puedes usar las plantillas rápidas de abajo:
+        </p>
+        
+        <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button style="padding: 6px 12px; background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px;" 
+                    onclick="document.getElementById('sql-input').value = 'SELECT * FROM lectura_humedad ORDER BY fecha_registro DESC LIMIT 10;'">
+                📄 Ver últimas 10 lecturas
+            </button>
+            <button style="padding: 6px 12px; background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px;" 
+                    onclick="document.getElementById('sql-input').value = 'SELECT * FROM sensor;'">
+                🤖 Ver estado de los sensores
+            </button>
+            <button style="padding: 6px 12px; background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px;" 
+                    onclick="document.getElementById('sql-input').value = 'SELECT * FROM sector;'">
+                🏡 Ver sectores registrados
+            </button>
+        </div>
+
+        <textarea id="sql-input" placeholder="SELECT * FROM lectura_humedad LIMIT 10;"></textarea>
+        <button class="execute" onclick="executeSQL()">Ejecutar Consulta</button>
+        <div id="results-sql"></div>
+    </div>
+
+    <div id="tab-historial" class="tab-content">
+        <h2>Logs de Consultas (MongoDB)</h2>
+        <button class="execute" onclick="loadHistory()">Refrescar Historial</button>
+        <div id="results-history"></div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+            if(tabId === 'tab-historial') loadHistory();
+        }
+
+        fetch('/api/status').then(res => res.json()).then(data => {
+            document.getElementById('mysql-status').innerText = 'MySQL: ' + data.mysql;
+            document.getElementById('mongo-status').innerText = 'MongoDB: ' + data.mongo;
+        });
+
+        fetch('/api/consultas').then(res => res.json()).then(data => {
+            const container = document.getElementById('queries-container');
+            data.forEach(q => {
+                const div = document.createElement('div');
+                div.className = 'query-card';
+                div.innerHTML = `<strong style="font-size: 16px; color: #2e7d32;">${q.nombre}</strong><br><small style="color: #636e72;">Haz clic para cargar la tabla de datos</small>`;
+                div.onclick = () => runPredefined(q.id);
+                container.appendChild(div);
+            });
+        });
+
+        async function runPredefined(id) {
+            const res = await fetch(`/api/consultas/${id}`);
+            const data = await res.json();
+            renderTable(data, 'results-predefinidas');
+        }
+
+        async function executeSQL() {
+            const sql = document.getElementById('sql-input').value;
+            const res = await fetch('/api/sql', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sql })
+            });
+            const data = await res.json();
+            renderTable(data, 'results-sql');
+        }
+
+        async function loadHistory() {
+            const res = await fetch('/api/historial');
+            const data = await res.json();
+            
+            // Formatear los datos crudos de MongoDB a un diseño limpio
+            const datosLimpios = data.map(row => {
+                const fechaLimpia = new Date(row.fecha).toLocaleString('es-CL', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute:'2-digit'
+                });
+
+                // Escapar comillas dobles para que el tooltip de HTML no se rompa
+                const consultaSegura = row.consulta ? row.consulta.replace(/"/g, '&quot;') : '';
+
+                return {
+                    "Fecha y Hora": fechaLimpia,
+                    "Tipo de Acción": row.tipo === 'predefinida' ? '🟢 Botón Rápido' : '💻 Consola Manual',
+                    "Consulta Ejecutada": `<div style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #636e72;" title="${consultaSegura}">${row.consulta}</div>`,
+                    "Filas Obtenidas": row.resultados_obtenidos,
+                    "Estado": row.error ? '❌ Error' : '✅ Éxito'
+                };
+            });
+
+            renderTable(datosLimpios, 'results-history');
+        }
+
+        function renderTable(data, containerId) {
+            const container = document.getElementById(containerId);
+            if (data.error) {
+                container.innerHTML = `<p style="color:red">Error: ${data.error}</p>`;
+                return;
+            }
+            if (data.length === 0) {
+                container.innerHTML = '<p>No hay resultados.</p>';
+                return;
+            }
+            
+            // Crear el botón de exportar
+            let html = `<button onclick="exportToCSV('${containerId}')" style="margin-bottom:10px; padding:5px 10px; background:#2e7d32; color:white; border:none; border-radius:4px; cursor:pointer;">📥 Exportar a CSV</button>`;
+            
+            html += '<table><thead><tr>';
+            Object.keys(data[0]).forEach(key => html += `<th>${key}</th>`);
+            html += '</tr></thead><tbody>';
+            
+            data.forEach(row => {
+                html += '<tr>';
+                Object.values(row).forEach(val => {
+                    const textVal = typeof val === 'object' ? JSON.stringify(val) : val;
+                    html += `<td>${textVal}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // Función para descargar CSV
+        function exportToCSV(containerId) {
+            const table = document.getElementById(containerId).querySelector('table');
+            let csv = [];
+            for (let i = 0, row; row = table.rows[i]; i++) {
+                let cols = [];
+                for (let j = 0, col; col = row.cells[j]; j++) cols.push(col.innerText);
+                csv.push(cols.join(","));
+            }
+            const blob = new Blob([csv.join("\n")], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.setAttribute("href", url);
+            a.setAttribute("download", "datos_iot.csv");
+            a.click();
+        }
+        // Auto-refresco: Si estamos en una pestaña, actualiza cada 10 segundos
+        setInterval(() => {
+            const activeTab = document.querySelector('.tab-content.active');
+            if(activeTab.id === 'tab-historial') loadHistory();
+        }, 10000); // <--- Aquí cambiaste el 30000 por 10000
+    </script>
+</body>
+</html>
